@@ -26,47 +26,64 @@ def load_audio_from_youtube(youtube_id):
 	print "Saved to: " + destination_path
 	print "Loading audio..."
 	y, sr = load_audio(destination_path)
-	return y, sr
+	return y, sr, destination_path
 
-# Basic audio preparation: get mono / spectrum / real
-you_make_me = "I98OWrboh-M"
-y, sr = load_audio_from_youtube(you_make_me)
-y, sr = load_audio("~/Dropbox/Apps/01 Hey Ya.mp3")
-y_mono = librosa.core.to_mono(y)
+def audio_to_madmom_ddf(y, savefile_stem=None):
+	if savefile_stem is not None:
+		if os.path.exists(savefile_stem + "_ddf.mat"):
+			ddf = sp.io.loadmat(savefile_stem + "_ddf")['ddf']
+			return ddf
+	y_mono = librosa.core.to_mono(y)
+	detection_function = madmom.features.beats.RNNDownBeatProcessor()(y_mono)
+	if savefile_stem is not None:
+		sp.io.savemat(savefile_stem, {'ddf':detection_function})
+	return detection_function
 
-# Do beat tracking using madmom
-detection_function = madmom.features.beats.RNNDownBeatProcessor()(y_mono)
-# Save detection function to matlab for sharing:
-# sp.io.savemat("hey_ya_detection_function.m", {'detecfunc':detection_function})
-fps_ratio = sr * 1.0 / 44100
-beat_estimates = madmom.features.beats.DBNDownBeatTrackingProcessor(beats_per_bar=[3,4], fps=int(100*fps_ratio))(detection_function)
-beat_estimates = madmom.features.beats.DBNDownBeatTrackingProcessor(beats_per_bar=[2,3,4,5,6,7], fps=int(100*fps_ratio))(detection_function)
+def madmom_ddf_to_downbeats(detection_function, sr, bar_opts=[3,4]):
+	fps_ratio = sr * 1.0 / 44100
+	downbeat_estimates = madmom.features.beats.DBNDownBeatTrackingProcessor(beats_per_bar=bar_opts, fps=int(100*fps_ratio))(detection_function)
+	return downbeat_estimates
 
+def madmom_ddf_to_beats(detection_function, sr):
+	fps_ratio = sr * 1.0 / 44100
+	beat_estimates = madmom.features.beats.DBNBeatTrackingProcessor(fps=int(100*fps_ratio))(detection_function)
+	return beat_estimates
 
-x = sp.io.loadmat("hey_ya_detection_function.m")
-
-
-### Once you have a downbeat detection function (DDF), let's compare the DDF for all pairs of measures, for all possible offsets.
-# Set bar length
-bar_length = 4
-beat_estimates = madmom.features.beats.DBNDownBeatTrackingProcessor(beats_per_bar=[bar_length], fps=int(100*fps_ratio))(detection_function)
-
-# Generate different hypothesis downbeat streams
-#  [1234] [1234]  ... vs [2341] [2341] ... etc.
-# bar_onsets_i = beat_estimates[range(0,beat_estimates.shape[0],4),0]
-bar_onsets = [beat_estimates[range(i,beat_estimates.shape[0],bar_length),0] for i in range(bar_length)]
-
-# For each, collect DDF excerpts as our features.
-# feature_seq_i = detection_function[time:time+bar_length]
-feats = []
-for bar_onsets_i in bar_onsets:
+def get_ddf_feats_from_bar_onsets(ddf, bar_onsets):
 	feats_i = []
 	for t in range(len(bar_onsets_i)-1):
 		t1 = int(100*bar_onsets_i[t])
 		t2 = int(100*bar_onsets_i[t+1])
-		feature_seq_t = detection_function_heyya[t1:t2,:]
+		feature_seq_t = ddf[t1:t2,:]
 		feats_i += [feature_seq_t[:,1]]   # Take just the 2nd column, which is the downbeat detection function. 1st col has beat detection function.
-	feats += [feats_i]
+	return feats_i
+
+# Get audio from Youtube or local directory:
+you_make_me = "I98OWrboh-M"
+y, sr, filepath = load_audio_from_youtube(you_make_me)
+filepath = "./01 Hey Ya.mp3"
+filepath = "./10 The Stars.mp3"
+filepath = "./Weird Al Yankovic Even Worse - You Make Me.mp4"
+y, sr = load_audio(filepath)
+savefile_stem = os.path.splitext(os.path.basename(filepath))[0]
+
+# Do beat tracking using madmom
+ddf = audio_to_madmom_ddf(y, savefile_stem)
+
+# The downbeat tracking of this madmom function assumes a constant bar length.
+# So if any bars are shortened or lengthened, or the time signature changes, the phase of the estimated downbeats will be thrown off.
+# Let's compare every pair of bars, considering every different initial offset in beats.
+# We will characterize each bar by its DDF.
+beat_est = madmom_ddf_to_downbeats(ddf, sr, bar_opts=[3,4])
+beat_est_only = madmom_ddf_to_beats(ddf[:,0], sr)
+beat_est = np.stack((beat_est_only, np.zeros_like(beat_est_only)), axis=1)
+bar_length = int(np.max(beat_est[:,1]))
+bar_length = 4
+# Generate different hypothesis downbeat streams
+bar_onsets = [beat_est[range(i,beat_est.shape[0],bar_length),0] for i in range(bar_length)]
+# For each, collect DDF excerpts as our features.
+feats = [get_ddf_feats_from_bar_onsets(ddf, onsets) for onsets in bar_onsets]
+
 
 # For each bar_onset hypothesis, we create a different feature set, and these are assembled in feats. Thus:
 len(feats) == bar_length
@@ -76,19 +93,26 @@ len(feats) == bar_length
 collections.Counter([len(x) for x in feats[0]])
 # Therefore, to compare them, we will either need to truncate/pad them to some fixed length, or use a flexible similarity metric like DTW distance.
 
-
 # To start, look at truncations:
 # Generate self-similarity matrix for all paris of beat-stream-feature_sets
-dists = np.zeros((len(feats),len(feats[0]),len(feats[0])))
-for i in range(len(feats)):
-	for k_i in range(len(feats[i])):
-		for k_j in range(len(feats[j])):
-			x = feats[0][k_i]
-			y = feats[i][k_j]
-			if len(x)>0 and len(y)>0:
-				min_len = np.min((len(x),len(y)))
-				dists[i,k_i,k_j] = cosine(x[:min_len], y[:min_len])
 
+def compute_dists_from_ddf_feats(feats):
+	bar_length = len(feats)
+	n_bars = len(feats[0])
+	dists = np.zeros((bar_length, n_bars, n_bars))
+	for i in range(bar_length):
+		for k_x in range(n_bars-1):
+			for k_y in range(n_bars-1):
+				x = feats[0][k_x]
+				y = feats[i][k_y]
+				if len(x)>0 and len(y)>0:
+					min_len = np.min((len(x),len(y)))
+					dists[i,k_x,k_y] = cosine(x[:min_len], y[:min_len])
+	return dists
+
+
+dists = compute_dists_from_ddf_feats(feats)
+dists = dists[:,:80,:80]
 plt.figure(1)
 for i in range(4):
 	plt.subplot(2,2,i+1)
@@ -96,13 +120,31 @@ for i in range(4):
 	plt.title("Phase-0 vs. Phase-"+str(i))
 
 plt.tight_layout()
-plt.savefig("phase_comparison_plot_heyya.jpg")
+plt.savefig(savefile_stem + "_phase_comp.jpg")
 plt.figure(2)
 # make "phase-invariant" bar-similarity matrix
 plt.imshow(np.min(dists,axis=0))
 plt.title("Min across all Phase-0-Phase-X plots")
 plt.tight_layout()
-plt.savefig("phase_invariant_plot_heyya.jpg")
+plt.savefig(savefile_stem + "_phase_invariant.jpg")
+
+plt.figure(3)
+# make "phase-invariant" bar-similarity matrix
+plt.imshow(np.argmin(dists,axis=0))
+plt.title("Min across all Phase-0-Phase-X plots")
+plt.tight_layout()
+plt.savefig(savefile_stem + "_argmin_phase_invariant.jpg")
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Tentative work using DTW distance --- but it's very slow!
