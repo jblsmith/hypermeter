@@ -31,10 +31,61 @@ Naive beat tracking on a unusual beat sequence leads to "phase" errors:
     [1  2  3  4][1  2  3  4][1  2  3][1  2  3  4][1  2  3  4][1  ...    <- true downbeat groupings
 ```
 
-## Method
+## Method(s)
+
+Insert DDF image here, to demonstrate interesting change
+
+Hypothesis: when comparing the downbeat detection function (DDF) of Madmom (or whatever feature) will be more similar 
+
+Motivating example: suppose there is a song in 4/4, with a single beat missing --- a single measure in 3.
+  - A b c d A b c d A b c d A b c A b c d A b c d 
+
+If you group the downbeats correctly, you should find that every measure resembles every other measure:
+  - [A b c d] [A b c d] [A b c d] [A b c] [A b c d] [A b c d]
+  - Every [Abcd] is similar to every other [Abcd], and they will sort of look like [Abc] too.
+
+But if you group the downbeats and don't detect the strange bar, your bars will get out of phase:
+  - [A b c d] [A b c d] [A b c d] [A b c A] [b c d A] [b c d A] [b c d A]
+  - The [Abcd] sections resemble each other
+  - The [bcdA] sections resemble each other
+  - But [Abcd] doesn't resemble [bcdA]
+
+We can build a representation that t
 
 
+X = [1234]
+Y = [2341]
+Z = [3412]
 
+Naive approach one:
+  X     X     X   X    Y    Y Y Y Z Z Z 
+[1234][1234][...][2341][2341]
+
+Approach two:
+Y Y Y Y Z Z Z Z W W W W X X X X
+  
+  
+  
+Label abcd=abcd
+bcda=bcda
+abcda = bcda - 1
+
+
+  - **1**234**1**234**1**234**1**234**1**234**1**234**1**234**1**23**1**234**1**234**1**234**1**234
+
+Step 1: do naive downbeat tracking with all possible phase offsets:
+
+I.e.:
+[....][....][....][....][....]
+.[....][....][....][....][....]
+..[....][....][....][....][....]
+...[....][....][....][....][....]
+....[....][....][....][....][....]
+```  
+     1  2  3  4  1  2  3  4  1  2  3  1  2  3  4  1  2  3  4  1  ...    <- true beats
+    [1  2  3  4][1  2  3  4][1  2  3  1][2  3  4  1][2  3  4  1] ...    <- 
+    [1  2  3  4][1  2  3  4][1  2  3][1  2  3  4][1  2  3  4][1  ...    <- true downbeat groupings
+```
 
 
 ## Facts about music
@@ -45,7 +96,5 @@ Naive beat tracking on a unusual beat sequence leads to "phase" errors:
 1. unusual isolated measures (The Stars)
 2. time signature change (LSD)
 3. Unusual (Hey Ya)
-
-
 
 
