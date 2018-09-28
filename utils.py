@@ -30,16 +30,23 @@ def load_audio_from_youtube(youtube_id):
 	return y, sr, destination_path
 
 @memory.cache()
-def audio_to_madmom_ddf(y, savefile_stem=None):
-	if savefile_stem is not None:
-		if os.path.exists(savefile_stem + "_ddf.mat"):
-			ddf = sp.io.loadmat(savefile_stem + "_ddf")['ddf']
-			return ddf
+def audio_to_madmom_ddf(y):
 	y_mono = librosa.core.to_mono(y)
 	detection_function = madmom.features.beats.RNNDownBeatProcessor()(y_mono)
-	if savefile_stem is not None:
-		sp.io.savemat(savefile_stem, {'ddf':detection_function})
 	return detection_function
+
+@memory.cache()
+def audio_to_madmom_bdf(y):
+	y_mono = librosa.core.to_mono(y)
+	detection_function = madmom.features.beats.RNNBeatProcessor()(y_mono)
+	return detection_function
+
+@memory.cache()
+def madmom_bdf_to_beats(beat_detection_function, sr):
+	fps_ratio = sr * 1.0 / 44100
+	beat_estimates = madmom.features.beats.DBNBeatTrackingProcessor(fps=int(100*fps_ratio))(beat_detection_function)
+	return beat_estimates
+
 
 @memory.cache()
 def madmom_ddf_to_downbeats(detection_function, sr, bar_opts=[3,4]):
