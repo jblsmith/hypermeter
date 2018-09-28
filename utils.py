@@ -4,11 +4,12 @@ import madmom
 import librosa, librosa.display
 import mir_eval
 import pytube
-import matplotlib.pyplot as plt
-plt.ion()
-from matplotlib import gridspec
 import collections
 from scipy.spatial.distance import euclidean, cosine
+import os
+from joblib import Memory
+
+memory = Memory("/tmp/cache/")
 
 # Load audio
 def load_audio(path):
@@ -28,6 +29,7 @@ def load_audio_from_youtube(youtube_id):
 	y, sr = load_audio(destination_path)
 	return y, sr, destination_path
 
+@memory.cache()
 def audio_to_madmom_ddf(y, savefile_stem=None):
 	if savefile_stem is not None:
 		if os.path.exists(savefile_stem + "_ddf.mat"):
@@ -39,21 +41,24 @@ def audio_to_madmom_ddf(y, savefile_stem=None):
 		sp.io.savemat(savefile_stem, {'ddf':detection_function})
 	return detection_function
 
+@memory.cache()
 def madmom_ddf_to_downbeats(detection_function, sr, bar_opts=[3,4]):
 	fps_ratio = sr * 1.0 / 44100
 	downbeat_estimates = madmom.features.beats.DBNDownBeatTrackingProcessor(beats_per_bar=bar_opts, fps=int(100*fps_ratio))(detection_function)
 	return downbeat_estimates
 
+@memory.cache()
 def madmom_ddf_to_beats(detection_function, sr):
 	fps_ratio = sr * 1.0 / 44100
 	beat_estimates = madmom.features.beats.DBNBeatTrackingProcessor(fps=int(100*fps_ratio))(detection_function)
 	return beat_estimates
 
+@memory.cache()
 def get_ddf_feats_from_bar_onsets(ddf, bar_onsets):
 	feats_i = []
-	for t in range(len(bar_onsets_i)-1):
-		t1 = int(100*bar_onsets_i[t])
-		t2 = int(100*bar_onsets_i[t+1])
+	for t in range(len(bar_onsets)-1):
+		t1 = int(100*bar_onsets[t])
+		t2 = int(100*bar_onsets[t+1])
 		feature_seq_t = ddf[t1:t2,:]
 		feats_i += [feature_seq_t[:,1]]   # Take just the 2nd column, which is the downbeat detection function. 1st col has beat detection function.
 	return feats_i
