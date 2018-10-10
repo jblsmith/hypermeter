@@ -1,6 +1,8 @@
 # Modelling odd meters
 *2018 HAMR project on discovering and handling situations that lead to downbeat errors*
 
+Refer to the [pdf presentation](https://github.com/jblsmith/hypermeter/blob/master/presentation_deadline_export.pdf) for detailed explanation.
+
 ## Goal
 Detect time signature changes
 
