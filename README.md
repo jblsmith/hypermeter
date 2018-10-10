@@ -10,7 +10,7 @@ Detect time signature changes
   - Bar lengths: 3, 3, 3, 3, ..., 3, 3, 4, 4, ... 4, 4, 3, 3, ..., 3, 3, 4, 4, ...
 - "Hey Ya!" (Outkast): the time signature is 4/4, but in every 6-bar phrase, the 4th bar is cut short.
   - Bar lengths: [4, 4, 4, 2, 4, 4], [4, 4, 4, 2, 4, 4], [4, 4, 4, 2, 4, 4], ...
-- "The Stars" (Jukebox the Ghost): time signature is 4/4, but there are two beats missing in the entire song.
+- "The Stars" (Jukebox the Ghost): time signature is 4/4, but occasionally there is a bar in 3/4.
   - Bar lengths: 4, 4, 4, 4, 4, ..., 4, 4, 3, 4, 4, ..., 4, 4, 3, 4, 4, ..., 4, 4, 4.
 
 These unusual situations are likely to lead to beat- or downbeat-tracking errors.
@@ -39,7 +39,7 @@ How can we detect these situations and correct the detected downbeats?
 
 Let's look at a real example of the above situation (i.e., a 4/4 song with an isolated bar of 3/4), using an excerpt of "The Stars" by Jukebox the Ghost. The output of the downbeat detection function (DDF) estimated by Madmom seems to reflect the true meter accurately, taking maximum values at each downbeat, even when the meter changes for a bar around 1:24-28. (The DDF is the blue line; the beat detection function has been inverted and is the orange line at top. The true beat labels are printed with the downbeats highlighted in yellow.) That said, the DDF does miss the downbeat at 1:30, but this is due to the syncopation in the music, not a change in meter.
 
-<a href="the_stars_ddf.png"><img src="the_stars_ddf.png" alt="Image of beat and downbeat detection functions, with true beat labels overlaid, demonstrating how the downbeat detection function accurately illustrates the meter anomaly." style="width: 50%; border-radius: 15px;"/></a></div>
+<a href="the_stars_ddf.png"><img src="the_stars_ddf.png" alt="Image of beat and downbeat detection functions, with true beat labels overlaid, demonstrating how the downbeat detection function accurately illustrates the meter anomaly." width="100%"/></a></div>
 
 Hypothesis: by comparing windowed excerpts of Madmom's DDF (and/or other features, perhaps) with different phase offsets, we can expose the meter anomaly. Intuitively, if a non-zero phase offset gives the best similarity match between two bars, then a meter anomaly has occurred.
 
@@ -65,19 +65,19 @@ Now replace every [1 2 3 4] with A, [2 3 4 1] with B, [3 4 1 2] with C and [4 1 
 
 If we directly compare any two windows labelled A, they should be similar, because the location of beats and downbeats within them is similar. However, if we compare A with B, they will be dissimilar.
 
-If we construct a self-similarity matrix (SSM) out of the first sequence, we expect to find big blocks on the diagonal when things stay in phase (all A=A, all B=B), but sharp corners when a meter anomaly shifts things out of phase (A≠B). We can see this situation below.
+If we construct a self-similarity matrix (SSM) out of the first sequence, we expect to find big blocks on the diagonal when things stay in phase (all A=A, all B=B), but sharp corners when a meter anomaly shifts things out of phase (A≠B). We can see this situation below:
 
-<a href="the_stars_mat0.png"><img src="the_stars_mat0.png" style="width: 50%; border-radius: 15px;"/></a></div>
+<a href="the_stars_mat0.png"><img src="the_stars_mat0.png" width="400px"/></a></div>
 
-But does the sharp corner truly indicate a meter anomaly, or just a strong change in the rhythm? Either could be true---we saw already that syncopation can strongly affect the DDF. We can clarify the situation by creating a cross-similarity matrix (CSM) between naive downbeat groupings with different offsets, like the one below that compares offset = 0 with offset = 1. Here, each off-diagonal block indicates that two parts of the song, which seemed different according to the previous matrix, are actually similar if a phase shift is taken into account.
+But does each sharp corner truly indicate a meter anomaly, or just a stark change in the rhythm? Either could be true---we saw already that syncopation can strongly affect the DDF. We can clarify the situation by creating a cross-similarity matrix (CSM) between naive downbeat groupings with different offsets, like the one below that compares offset = 0 with offset = 1. Here, each off-diagonal block indicates that two parts of the song, which seemed different according to the previous matrix, are actually similar if a phase shift is taken into account:
 
-<a href="the_stars_mat1.png"><img src="the_stars_mat1.png" style="width: 50%; border-radius: 15px;"/></a></div>
+<a href="the_stars_mat1.png"><img src="the_stars_mat1.png" width="400px"/></a></div>
 
 If we compute all 4 similarity matrices (one SSM, three CSMs), and take the argmin across them, we can neatly visualize the pattern of phase changes throughout the piece:
 
-<a href="the_stars_matmin.jpg"><img src="the_stars_matmin.jpg" style="width: 50%; border-radius: 15px;"/></a></div>
+<a href="the_stars_matmin.jpg"><img src="the_stars_matmin.jpg" width="400px"/></a></div>
 
-The clear visualization hints that it should be possible to detect these situations automatically, but doing so, and actually correcting the tracked downbeats, remain open problems.
+The clear visualization hints that it may be possible to detect these situations automatically, but doing so, and actually correcting the tracked downbeats, remain open problems. We discuss one method for re-estimating downbeats in the next section.
 
 ## Estimating correct downbeats
 
