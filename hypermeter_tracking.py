@@ -19,15 +19,23 @@ from scipy.spatial.distance import euclidean, cosine
 # you_make_me = "I98OWrboh-M"
 # y, sr, filepath = load_audio_from_youtube(you_make_me)
 # filepath = "./01 Hey Ya.mp3"
-# filepath = "./10 The Stars.mp3"
-filepath = "/Users/rhennequin/Downloads/Weird Al Yankovic Even Worse - You Make Me.mp4"
-filepath = "/Users/rhennequin/Downloads/01 Hey Ya.mp3"
-filepath = "/Users/rhennequin/Downloads/love_is_all.mp3"
+filepath = "./10 The Stars.mp3"
+# filepath = "/Users/rhennequin/Downloads/Weird Al Yankovic Even Worse - You Make Me.mp4"
+# filepath = "/Users/rhennequin/Downloads/01 Hey Ya.mp3"
+# filepath = "/Users/rhennequin/Downloads/love_is_all.mp3"
 y, sr = load_audio(filepath)
 savefile_stem = os.path.splitext(os.path.basename(filepath))[0]
 
 # Do beat tracking using madmom
 ddf = audio_to_madmom_ddf(y, savefile_stem)
+
+# # With ddf for "10 The Stars.mp3" loaded to ddf:
+# plt.clf()
+# plt.plot(ddf[:,1])
+# plt.plot(1-ddf[:,0])
+# x_range = np.array([78.5, 95])
+# plt.xlim(x_range*100)  # from 78.5 seconds to 95 seconds
+# plt.savefig('the_stars_ddf_example.jpg')
 
 # The downbeat tracking of this madmom function assumes a constant bar length.
 # So if any bars are shortened or lengthened, or the time signature changes, the phase of the estimated downbeats will be thrown off.
