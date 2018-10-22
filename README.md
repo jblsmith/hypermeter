@@ -1,5 +1,8 @@
 # Modelling odd meters
+
 *2018 HAMR project on discovering and handling situations that lead to downbeat errors*
+
+*By [Jordan B. L. Smith](https://github.com/jblsmith), [Romain Hennequin](https://github.com/romi1502), and [Olivier Lartillot](https://github.com/olivierlar).*
 
 Refer to the [pdf presentation](https://github.com/jblsmith/hypermeter/blob/master/presentation_deadline_export.pdf) for detailed explanation.
 
